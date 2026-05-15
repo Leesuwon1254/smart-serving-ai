@@ -1,458 +1,677 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import Header from '../components/Header'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useWindowSize } from '../hooks/useWindowSize'
+import * as Draw from '../utils/canvasDraw'
 
+// ── 채널 메타 정보 ────────────────────────────────────
 const CAM_DATA = [
   {
-    id: 1, label: 'CAM 1 · 테이블 1~3구역', status: 'urgent',
-    alertBadge: '긴급', alertColor: '#ef4444',
-    aiLines: [
-      { text: '⚠ 3번 테이블 — 빈 병 + 젓가락 낙하 감지', color: '#f87171' },
-      { text: '⚡ 추가 주문 확률 91% · 즉시 응대 권장', color: '#fbbf24' },
-    ],
-    people: [{ x: 70, y: 45 }, { x: 90, y: 45 }, { x: 80, y: 55 }],
-    bboxes: [
-      { x: 52, y: 36, w: 76, h: 58, color: '#ef4444', label: '빈 병' },
-      { x: 130, y: 55, w: 24, h: 20, color: '#f59e0b', label: '낙하' },
-    ],
-    tint: [0, 15, 0],
+    id: 1, ch: 1, label: '홀 A', location: '메인홀 A구역',
+    status: 'alert',
+    alerts: ['빈 소주병 2개 감지', '젓가락 낙하 감지', '바닥 지갑 분실물'],
+    analysis: ['테이블 1,2 식사 중 (고기불판 가동)', '재킷 의자 걸침 1건 — 장기 착석 예측', '지갑 분실물 — 즉시 안내 필요'],
   },
   {
-    id: 2, label: 'CAM 2 · 테이블 4~6구역', status: 'warning',
-    alertBadge: '주의', alertColor: '#f59e0b',
-    aiLines: [
-      { text: '⚡ 5번 테이블 — 깍두기 소진 85% 감지', color: '#fbbf24' },
-      { text: '✓ 리필 가능성 84% · 2분 내 준비 권장', color: '#4ade80' },
-    ],
-    people: [{ x: 65, y: 48 }, { x: 85, y: 48 }],
-    bboxes: [{ x: 46, y: 38, w: 80, h: 52, color: '#f59e0b', label: '반찬 소진' }],
-    tint: [0, 10, 5],
+    id: 2, ch: 2, label: '홀 B', location: '메인홀 B구역',
+    status: 'warning',
+    alerts: ['불판 연기 증가 감지', '핸드폰 방치 감지'],
+    analysis: ['6인 테이블 만석 — 회전율 낮음', '소주병 3개 중 2개 빈 병', '재킷 걸침 2건 — 장기 체류 예측'],
   },
   {
-    id: 3, label: 'CAM 3 · 테이블 7~9구역', status: 'ai',
-    alertBadge: 'AI 분석', alertColor: '#3b82f6',
-    aiLines: [
-      { text: '◉ 7번 테이블 — 체류 58분 · 카드 꺼냄 감지', color: '#60a5fa' },
-      { text: '⚡ 계산 가능성 78% · POS 준비 권장', color: '#fbbf24' },
-    ],
-    people: [{ x: 68, y: 44 }, { x: 88, y: 44 }, { x: 78, y: 44 }, { x: 108, y: 44 }],
-    bboxes: [{ x: 50, y: 34, w: 90, h: 60, color: '#3b82f6', label: '카드 감지' }],
-    tint: [0, 8, 15],
+    id: 3, ch: 3, label: '홀 C', location: '메인홀 C구역',
+    status: 'info',
+    alerts: ['계산 준비 감지 (카드)', '핸드폰 방치 감지', '열쇠 분실물'],
+    analysis: ['2인 테이블 1곳 — 1명 착석, 조기 퇴석 가능', '카드 꺼냄 → 계산 의도 감지', '바닥 열쇠 분실물 — 확인 필요'],
   },
   {
-    id: 4, label: 'CAM 4 · 테이블 10~12구역', status: 'ok',
-    alertBadge: null, alertColor: null,
-    aiLines: [{ text: '✓ 이상 없음 · 10번 테이블 가용 상태', color: '#4ade80' }],
-    people: [],
-    bboxes: [],
-    tint: [0, 12, 2],
+    id: 4, ch: 4, label: '홀 D', location: '메인홀 D구역',
+    status: 'ok',
+    alerts: [],
+    analysis: ['빈 테이블 2개 — 즉시 입석 가능', '테이블 정리 진행 중 1개', 'AI 예측: 15분 내 2테이블 가용'],
   },
   {
-    id: 5, label: 'CAM 5 · 테이블 13~15구역', status: 'ok',
-    alertBadge: null, alertColor: null,
-    aiLines: [
-      { text: '◉ 13번 테이블 — 4인 착석 · 패턴 학습 중', color: '#60a5fa' },
-      { text: '체류 22분 · 특이사항 없음', color: '#64748b' },
-    ],
-    people: [{ x: 72, y: 46 }, { x: 92, y: 46 }, { x: 82, y: 46 }, { x: 102, y: 46 }],
-    bboxes: [{ x: 54, y: 36, w: 90, h: 58, color: '#3b82f6', label: '패턴 분석' }],
-    tint: [0, 10, 8],
+    id: 5, ch: 5, label: '홀 E', location: '메인홀 E구역',
+    status: 'warning',
+    alerts: ['물컵 소진 감지', '반찬 소진 감지'],
+    analysis: ['4인 테이블 만석 — 식사 중', '물컵 잔량 10% 미만 감지', '반찬 그릇 비어있음 — 리필 필요'],
   },
   {
-    id: 6, label: 'CAM 6 · 입구 / 홀 전경', status: 'ok',
-    alertBadge: null, alertColor: null,
-    aiLines: [{ text: '✓ 정상 · 신규 입장 대기 없음', color: '#4ade80' }],
-    people: [{ x: 120, y: 60 }],
-    bboxes: [],
-    tint: [2, 12, 0],
+    id: 6, ch: 6, label: '입구', location: '입구/대기존',
+    status: 'info',
+    alerts: ['우산 방치 감지'],
+    analysis: ['대기 손님 2명 감지', '평균 대기 시간: 약 8분 예측', '우산 분실물 — 입구 보관함 안내 필요'],
   },
 ]
 
-function drawCamera(canvas, cam, frame) {
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  const W = canvas.width
-  const H = canvas.height
-  const t = frame * 0.016
+const STATUS_COLOR = {
+  alert: '#ef4444',
+  warning: '#f59e0b',
+  info: '#3b82f6',
+  ok: '#22c55e',
+}
 
-  // 1. 어두운 배경
-  ctx.fillStyle = `rgb(${6 + cam.tint[0]},${10 + cam.tint[1]},${8 + cam.tint[2]})`
-  ctx.fillRect(0, 0, W, H)
+const STATUS_LABEL = {
+  alert: '긴급',
+  warning: '주의',
+  info: 'AI분석',
+  ok: '정상',
+}
 
-  // 2. AI 격자 오버레이
-  ctx.strokeStyle = 'rgba(0,255,80,0.04)'
-  ctx.lineWidth = 0.5
-  const grid = 20
-  for (let x = 0; x <= W; x += grid) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
-  }
-  for (let y = 0; y <= H; y += grid) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
-  }
+// ── 가상 좌표계 (320×180) ─────────────────────────────
+const VW = 320
+const VH = 180
 
-  // 3. 테이블 영역 (채널별 위치 다르게)
-  const tableOffset = (cam.id - 1) * 18
-  ctx.fillStyle = 'rgba(0,60,30,0.5)'
-  ctx.strokeStyle = 'rgba(0,200,80,0.2)'
-  ctx.lineWidth = 1
-  const tx = 30 + tableOffset * 0.3, ty = 55 + tableOffset * 0.1
-  ctx.fillRect(tx, ty, 50, 30)
-  ctx.strokeRect(tx, ty, 50, 30)
-  if (cam.id <= 4) {
-    ctx.fillRect(tx + 65, ty - 5, 50, 30)
-    ctx.strokeRect(tx + 65, ty - 5, 50, 30)
-  }
+// ── 씬 렌더 함수들 ─────────────────────────────────────
 
-  // 4. 사람 실루엣
-  const bob = Math.sin(t * 0.8 + cam.id) * 1.5
-  cam.people.forEach((p, i) => {
-    const px = p.x * (W / 200), py = (p.y + bob * (i % 2 === 0 ? 1 : -0.5)) * (H / 120)
-    ctx.fillStyle = 'rgba(180,220,200,0.65)'
-    // 몸체
-    ctx.fillRect(px - 7, py - 8, 14, 20)
-    // 머리
-    ctx.beginPath()
-    ctx.arc(px, py - 12, 6, 0, Math.PI * 2)
-    ctx.fill()
+function drawCam1(ctx, tick, noise) {
+  Draw.drawBackground(ctx, VW, VH)
+  Draw.drawGrid(ctx, VW, VH)
+  Draw.drawSweep(ctx, VW, VH, tick)
+
+  noise.forEach(n => {
+    n.y = (n.y + n.speed) % VH
+    Draw.drawNoiseLine(ctx, VW, n.y, n.alpha)
   })
 
-  // 5. 채널별 특수 오브젝트
-  if (cam.id === 1) {
-    // 빈 병 (초록 사각형)
-    ctx.fillStyle = 'rgba(0,180,80,0.6)'
-    ctx.fillRect(110 * (W / 200), 68 * (H / 120), 8, 18)
-    // 기울어진 젓가락 (주황 선)
-    ctx.strokeStyle = '#f97316'
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.moveTo(100 * (W / 200), 82 * (H / 120))
-    ctx.lineTo(120 * (W / 200), 86 * (H / 120))
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(103 * (W / 200), 80 * (H / 120))
-    ctx.lineTo(122 * (W / 200), 84 * (H / 120))
-    ctx.stroke()
-  }
-  if (cam.id === 2) {
-    // 거의 빈 반찬 접시 (타원, 노란 테두리)
-    ctx.strokeStyle = 'rgba(250,204,21,0.7)'
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.ellipse(85 * (W / 200), 72 * (H / 120), 14, 7, 0, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.fillStyle = 'rgba(250,204,21,0.15)'
-    ctx.fill()
-  }
-  if (cam.id === 3) {
-    // 카드 (파란 사각형)
-    ctx.fillStyle = 'rgba(59,130,246,0.55)'
-    ctx.strokeStyle = 'rgba(147,197,253,0.8)'
-    ctx.lineWidth = 1
-    ctx.fillRect(118 * (W / 200), 60 * (H / 120), 18, 11)
-    ctx.strokeRect(118 * (W / 200), 60 * (H / 120), 18, 11)
-  }
-  if (cam.id === 6) {
-    // 출입구 문 프레임
-    ctx.strokeStyle = 'rgba(0,255,80,0.25)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(148 * (W / 200), 20 * (H / 120), 32, 70)
-    ctx.beginPath()
-    ctx.moveTo(164 * (W / 200), 20 * (H / 120))
-    ctx.lineTo(164 * (W / 200), 90 * (H / 120))
-    ctx.stroke()
-  }
+  // 테이블1 (4인) — 좌상
+  Draw.drawRectTable(ctx, 20, 20, 90, 55)
+  Draw.drawPerson(ctx, 35, 18, tick, 0)
+  Draw.drawPerson(ctx, 65, 18, tick, 1)
+  Draw.drawPerson(ctx, 35, 80, tick, 2)
+  Draw.drawPerson(ctx, 65, 80, tick, 3)
+  Draw.drawHotPot(ctx, 65, 47, 12, tick)
+  Draw.drawBowl(ctx, 30, 38, 5)
+  Draw.drawBowl(ctx, 80, 38, 5)
+  Draw.drawBowl(ctx, 30, 60, 4, '#4a7c59', '#1e4d2b')
+  Draw.drawBowl(ctx, 80, 60, 4, '#4a7c59', '#1e4d2b')
+  Draw.drawBottle(ctx, 44, 34, false)
+  Draw.drawBottle(ctx, 51, 34, true)
+  Draw.drawChopsticks(ctx, 38, 55, 0, true)
+  Draw.drawChopsticks(ctx, 72, 55, 0, false)
+  Draw.drawSpoon(ctx, 26, 47)
+  Draw.drawDetectionBox(ctx, 49, 30, 14, 18, '#ef4444', '빈병감지', tick)
+  Draw.drawDetectionBox(ctx, 30, 50, 18, 10, '#ef4444', '젓가락낙하', tick)
 
-  // 6. AI 감지 박스 (펄스)
-  cam.bboxes.forEach((box, bi) => {
-    const pulse = 0.6 + 0.4 * Math.sin(t * 2.5 + bi * 1.2)
-    const bx = box.x * (W / 200), by = box.y * (H / 120)
-    const bw = box.w * (W / 200), bh = box.h * (H / 120)
-    ctx.globalAlpha = pulse
-    ctx.strokeStyle = box.color
-    ctx.lineWidth = 1.5
-    ctx.strokeRect(bx, by, bw, bh)
+  // 테이블2 (4인) — 우상
+  Draw.drawRectTable(ctx, 200, 20, 100, 55)
+  Draw.drawPerson(ctx, 215, 18, tick, 4)
+  Draw.drawPerson(ctx, 250, 18, tick, 5)
+  Draw.drawPerson(ctx, 285, 18, tick, 6)
+  Draw.drawPerson(ctx, 215, 80, tick, 7)
+  Draw.drawPerson(ctx, 250, 80, tick, 8)
+  Draw.drawPerson(ctx, 285, 80, tick, 9)
+  Draw.drawGrillPlate(ctx, 220, 35, 60, 28, tick)
+  Draw.drawBowl(ctx, 212, 38, 4)
+  Draw.drawBowl(ctx, 212, 55, 4, '#4a7c59', '#1e4d2b')
+  Draw.drawGlass(ctx, 290, 38, 0.6)
+  Draw.drawGlass(ctx, 290, 52, 0.3)
+  Draw.drawChopsticks(ctx, 225, 68, 0, false)
+  Draw.drawChopsticks(ctx, 255, 68, 0, false)
+  Draw.drawSpoon(ctx, 207, 47)
+  Draw.drawJacket(ctx, 283, 85)
+  Draw.drawDetectionBox(ctx, 280, 82, 20, 16, '#f59e0b', '재킷감지', tick)
 
-    // L자 코너 마커
-    const cs = 8
-    ctx.lineWidth = 3
-    ;[[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]].forEach(([cx, cy], ci) => {
-      const sx = ci === 1 || ci === 3 ? -1 : 1
-      const sy = ci >= 2 ? -1 : 1
-      ctx.beginPath(); ctx.moveTo(cx, cy + sy * cs); ctx.lineTo(cx, cy); ctx.lineTo(cx + sx * cs, cy); ctx.stroke()
-    })
+  // 테이블3 (2인) — 좌하
+  Draw.drawRectTable(ctx, 20, 105, 70, 40)
+  Draw.drawPerson(ctx, 40, 102, tick, 10)
+  Draw.drawPerson(ctx, 72, 102, tick, 11)
+  Draw.drawBowl(ctx, 38, 125, 5)
+  Draw.drawBowl(ctx, 72, 125, 5)
+  Draw.drawGlass(ctx, 55, 118, 0.7)
+  Draw.drawChopsticks(ctx, 45, 133, 0, false)
+  Draw.drawSpoon(ctx, 28, 125)
 
-    // 라벨 칩
-    ctx.globalAlpha = pulse * 0.92
-    ctx.fillStyle = box.color
-    ctx.font = `bold ${Math.max(9, W * 0.052)}px monospace`
-    const tw = ctx.measureText(box.label).width
-    ctx.fillRect(bx, by - 16, tw + 8, 15)
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(box.label, bx + 4, by - 4)
-    ctx.globalAlpha = 1
+  // 바닥 분실물 — 지갑
+  Draw.drawFloorItem(ctx, 155, 140, 'wallet', tick)
+  Draw.drawDetectionBox(ctx, 140, 128, 32, 24, '#ef4444', '분실물:지갑', tick)
+
+  Draw.drawScanlines(ctx, VW, VH)
+  Draw.drawTimestamp(ctx, VH, 1, tick)
+}
+
+function drawCam2(ctx, tick, noise) {
+  Draw.drawBackground(ctx, VW, VH)
+  Draw.drawGrid(ctx, VW, VH)
+  Draw.drawSweep(ctx, VW, VH, tick, 'rgba(0,200,120,0.04)')
+
+  noise.forEach(n => {
+    n.y = (n.y + n.speed) % VH
+    Draw.drawNoiseLine(ctx, VW, n.y, n.alpha)
   })
 
-  // 7. 녹색 스위프 라인
-  const sweepY = ((t * 28 + cam.id * 22) % (H + 20)) - 10
-  const grad = ctx.createLinearGradient(0, sweepY - 12, 0, sweepY + 12)
-  grad.addColorStop(0, 'rgba(0,255,80,0)')
-  grad.addColorStop(0.5, 'rgba(0,255,80,0.18)')
-  grad.addColorStop(1, 'rgba(0,255,80,0)')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, sweepY - 12, W, 24)
+  // 6인 테이블 — 중앙 좌측
+  Draw.drawRectTable(ctx, 15, 25, 130, 65)
+  Draw.drawPerson(ctx, 30, 22, tick, 0)
+  Draw.drawPerson(ctx, 75, 22, tick, 1)
+  Draw.drawPerson(ctx, 120, 22, tick, 2)
+  Draw.drawPerson(ctx, 30, 95, tick, 3)
+  Draw.drawPerson(ctx, 75, 95, tick, 4)
+  Draw.drawPerson(ctx, 120, 95, tick, 5)
+  Draw.drawGrillPlate(ctx, 35, 38, 40, 22, tick)
+  Draw.drawGrillPlate(ctx, 85, 38, 40, 22, tick)
+  Draw.drawBottle(ctx, 22, 45, false)
+  Draw.drawBottle(ctx, 29, 45, true)
+  Draw.drawBottle(ctx, 36, 45, true)
+  Draw.drawShotGlass(ctx, 50, 65)
+  Draw.drawShotGlass(ctx, 58, 65)
+  Draw.drawShotGlass(ctx, 66, 65)
+  Draw.drawShotGlass(ctx, 74, 65)
+  Draw.drawGlass(ctx, 136, 42, 0.6)
+  Draw.drawGlass(ctx, 136, 55, 0.5)
+  Draw.drawJacket(ctx, 27, 100)
+  Draw.drawJacket(ctx, 118, 100)
+  Draw.drawDetectionBox(ctx, 24, 97, 18, 16, '#f59e0b', '재킷', tick)
+  Draw.drawDetectionBox(ctx, 115, 97, 18, 16, '#f59e0b', '재킷', tick)
+  Draw.drawPhone(ctx, 110, 58)
+  Draw.drawDetectionBox(ctx, 107, 54, 14, 16, '#3b82f6', '폰방치', tick)
 
-  // 8. 노이즈 라인
-  for (let n = 0; n < 8; n++) {
-    const ny = ((t * (12 + n * 3) + n * 37 + cam.id * 13) % (H + 5))
-    ctx.fillStyle = `rgba(200,255,220,${0.03 + Math.random() * 0.04})`
-    ctx.fillRect(0, ny, W, 1 + (n % 2))
-  }
+  // 원형 테이블 4인 — 우측
+  Draw.drawRoundTable(ctx, 245, 85, 45)
+  Draw.drawPerson(ctx, 245, 38, tick, 6)
+  Draw.drawPerson(ctx, 292, 85, tick, 7)
+  Draw.drawPerson(ctx, 245, 132, tick, 8)
+  Draw.drawPerson(ctx, 198, 85, tick, 9)
+  Draw.drawHotPot(ctx, 245, 85, 14, tick)
+  Draw.drawBowl(ctx, 232, 68, 5)
+  Draw.drawBowl(ctx, 258, 68, 5)
+  Draw.drawBowl(ctx, 232, 100, 5)
+  Draw.drawBowl(ctx, 258, 100, 5)
+  Draw.drawGlass(ctx, 275, 72, 0.7)
+  Draw.drawGlass(ctx, 275, 88, 0.5)
 
-  // 9. 스캔라인 효과
-  for (let y = 0; y < H; y += 3) {
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'
-    ctx.fillRect(0, y, W, 1)
-  }
+  Draw.drawDetectionBox(ctx, 30, 22, 130, 75, '#f59e0b', '불판:연기증가', tick)
 
-  // 10. 타임스탬프 + 채널번호 워터마크
-  const now = new Date()
-  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
-  ctx.font = `bold ${Math.max(9, W * 0.05)}px monospace`
-  ctx.fillStyle = 'rgba(0,255,80,0.6)'
-  ctx.fillText(`CH${cam.id}  ${ts}`, 6, H - 7)
+  Draw.drawScanlines(ctx, VW, VH)
+  Draw.drawTimestamp(ctx, VH, 2, tick)
 }
 
-function CameraCanvas({ cam, size, onClick }) {
-  const canvasRef = useRef(null)
-  const frameRef = useRef(0)
-  const rafRef = useRef(null)
+function drawCam3(ctx, tick, noise) {
+  Draw.drawBackground(ctx, VW, VH)
+  Draw.drawGrid(ctx, VW, VH)
+  Draw.drawSweep(ctx, VW, VH, tick, 'rgba(0,150,200,0.04)')
 
-  useEffect(() => {
-    let running = true
-    function loop() {
-      if (!running) return
-      frameRef.current++
-      drawCamera(canvasRef.current, cam, frameRef.current)
-      rafRef.current = requestAnimationFrame(loop)
-    }
-    rafRef.current = requestAnimationFrame(loop)
-    return () => { running = false; cancelAnimationFrame(rafRef.current) }
-  }, [cam])
+  noise.forEach(n => {
+    n.y = (n.y + n.speed) % VH
+    Draw.drawNoiseLine(ctx, VW, n.y, n.alpha)
+  })
 
-  const statusDot = cam.status === 'urgent' ? '#ef4444' : cam.status === 'warning' ? '#f59e0b' : '#22c55e'
+  // 2인 테이블A
+  Draw.drawRectTable(ctx, 15, 20, 65, 35)
+  Draw.drawPerson(ctx, 30, 17, tick, 0)
+  Draw.drawPerson(ctx, 65, 17, tick, 1)
+  Draw.drawBowl(ctx, 32, 37, 5)
+  Draw.drawBowl(ctx, 62, 37, 5)
+  Draw.drawGlass(ctx, 47, 30, 0.7)
+  Draw.drawChopsticks(ctx, 37, 48, 0, false)
 
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        position: 'relative', cursor: 'pointer', borderRadius: 8, overflow: 'hidden',
-        border: `2px solid ${cam.status === 'urgent' ? '#ef4444' : cam.status === 'warning' ? '#f59e0b' : '#1e3a2e'}`,
-        boxShadow: cam.status === 'urgent'
-          ? '0 0 16px rgba(239,68,68,0.4)'
-          : cam.status === 'warning' ? '0 0 12px rgba(245,158,11,0.3)' : 'none',
-        transition: 'transform 0.15s',
-      }}
-      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-    >
-      <canvas
-        ref={canvasRef}
-        width={size.w}
-        height={size.h}
-        style={{ display: 'block', width: '100%', height: '100%' }}
-      />
+  // 2인 테이블B (1명 착석, 가방 방치)
+  Draw.drawRectTable(ctx, 15, 80, 65, 35)
+  Draw.drawPerson(ctx, 30, 77, tick, 2)
+  Draw.drawBag(ctx, 60, 85)
+  Draw.drawDetectionBox(ctx, 56, 82, 18, 16, '#3b82f6', '가방방치', tick)
+  Draw.drawBowl(ctx, 32, 97, 5)
+  Draw.drawGlass(ctx, 47, 90, 0.4)
 
-      {/* 좌상단 채널명 */}
-      <div style={{
-        position: 'absolute', top: 6, left: 6,
-        display: 'flex', alignItems: 'center', gap: 5,
-        background: 'rgba(0,0,0,0.65)', borderRadius: 4,
-        padding: '3px 7px', backdropFilter: 'blur(2px)',
-      }}>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusDot, boxShadow: `0 0 6px ${statusDot}` }} />
-        <span style={{ color: '#e2e8f0', fontSize: 10, fontWeight: 600, fontFamily: 'monospace' }}>{cam.label}</span>
-      </div>
+  // 2인 테이블C
+  Draw.drawRectTable(ctx, 15, 137, 65, 35)
+  Draw.drawPerson(ctx, 30, 134, tick, 3)
+  Draw.drawPerson(ctx, 65, 134, tick, 4)
+  Draw.drawBowl(ctx, 32, 154, 5)
+  Draw.drawBowl(ctx, 62, 154, 5)
+  Draw.drawGlass(ctx, 47, 148, 0.6)
+  Draw.drawSpoon(ctx, 22, 155)
 
-      {/* 우상단 배지 */}
-      {cam.alertBadge && (
-        <div style={{
-          position: 'absolute', top: 6, right: 6,
-          background: cam.alertColor, color: '#fff',
-          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
-        }}>
-          {cam.alertBadge}
-        </div>
-      )}
+  // 원형 테이블 4인 — 우측
+  Draw.drawRoundTable(ctx, 225, 90, 45)
+  Draw.drawPerson(ctx, 225, 43, tick, 5)
+  Draw.drawPerson(ctx, 272, 90, tick, 6)
+  Draw.drawPerson(ctx, 225, 137, tick, 7)
+  Draw.drawPerson(ctx, 178, 90, tick, 8)
+  Draw.drawBowl(ctx, 212, 75, 5)
+  Draw.drawBowl(ctx, 238, 75, 5)
+  Draw.drawBowl(ctx, 212, 103, 5)
+  Draw.drawBowl(ctx, 238, 103, 5)
+  Draw.drawCard(ctx, 215, 110)
+  Draw.drawDetectionBox(ctx, 212, 107, 28, 18, '#3b82f6', '계산감지', tick)
 
-      {/* 하단 AI 분석 바 */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(2px)',
-        padding: '5px 8px',
-      }}>
-        {cam.aiLines.map((line, i) => (
-          <div key={i} style={{ color: line.color, fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {line.text}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  Draw.drawPhone(ctx, 165, 88)
+  Draw.drawDetectionBox(ctx, 161, 84, 14, 16, '#3b82f6', '폰방치', tick)
+
+  Draw.drawFloorItem(ctx, 140, 155, 'key', tick)
+  Draw.drawDetectionBox(ctx, 127, 143, 26, 24, '#ef4444', '분실물:열쇠', tick)
+
+  Draw.drawScanlines(ctx, VW, VH)
+  Draw.drawTimestamp(ctx, VH, 3, tick)
 }
 
-function CameraModal({ cam, onClose }) {
-  const canvasRef = useRef(null)
-  const frameRef = useRef(0)
-  const rafRef = useRef(null)
+function drawCam4(ctx, tick, noise) {
+  Draw.drawBackground(ctx, VW, VH)
+  Draw.drawGrid(ctx, VW, VH)
+  Draw.drawSweep(ctx, VW, VH, tick, 'rgba(0,200,100,0.03)')
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  noise.forEach(n => {
+    n.y = (n.y + n.speed) % VH
+    Draw.drawNoiseLine(ctx, VW, n.y, n.alpha)
+  })
 
-  useEffect(() => {
-    let running = true
-    function loop() {
-      if (!running) return
-      frameRef.current++
-      drawCamera(canvasRef.current, cam, frameRef.current)
-      rafRef.current = requestAnimationFrame(loop)
-    }
-    rafRef.current = requestAnimationFrame(loop)
-    return () => { running = false; cancelAnimationFrame(rafRef.current) }
-  }, [cam])
+  // 빈 테이블1
+  Draw.drawRectTable(ctx, 25, 30, 80, 45, '#091520')
+  ctx.fillStyle = 'rgba(34,197,94,0.15)'
+  ctx.beginPath(); ctx.roundRect(25, 30, 80, 45, 3); ctx.fill()
+  Draw.drawDetectionBox(ctx, 25, 30, 80, 45, '#22c55e', '가용:즉시', tick)
 
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-        zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 900 }}>
-        {/* 모달 헤더 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span style={{ color: '#4ade80', fontFamily: 'monospace', fontWeight: 700, fontSize: 15 }}>
-            ● {cam.label}
-          </span>
-          <button
-            onClick={onClose}
-            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 18 }}
-          >✕</button>
-        </div>
+  // 빈 테이블2
+  Draw.drawRectTable(ctx, 120, 30, 80, 45, '#091520')
+  ctx.fillStyle = 'rgba(34,197,94,0.15)'
+  ctx.beginPath(); ctx.roundRect(120, 30, 80, 45, 3); ctx.fill()
+  Draw.drawDetectionBox(ctx, 120, 30, 80, 45, '#22c55e', '가용:즉시', tick)
 
-        {/* 큰 canvas */}
-        <canvas
-          ref={canvasRef}
-          width={880}
-          height={495}
-          style={{ width: '100%', borderRadius: 8, border: `2px solid ${cam.alertColor || '#1e3a2e'}`, display: 'block' }}
-        />
+  // 정리 중 테이블
+  Draw.drawRectTable(ctx, 215, 30, 90, 45, '#0a1a0d')
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'
+  ctx.beginPath(); ctx.ellipse(260, 52, 18, 8, 0.3, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 0.5
+  ctx.beginPath(); ctx.ellipse(260, 52, 18, 8, 0.3, 0, Math.PI * 2); ctx.stroke()
+  ctx.fillStyle = 'rgba(34,197,94,0.7)'
+  ctx.font = '8px monospace'
+  ctx.fillText('정리중', 242, 65)
+  Draw.drawDetectionBox(ctx, 215, 30, 90, 45, '#22c55e', '정리중', tick)
 
-        {/* AI 분석 결과 상세 */}
-        <div style={{ marginTop: 12, background: 'rgba(0,20,10,0.9)', borderRadius: 8, padding: '12px 16px', border: '1px solid rgba(0,255,80,0.15)' }}>
-          <div style={{ color: '#4ade80', fontSize: 11, fontFamily: 'monospace', marginBottom: 8, fontWeight: 700 }}>AI ANALYSIS RESULT</div>
-          {cam.aiLines.map((line, i) => (
-            <div key={i} style={{ color: line.color, fontSize: 13, fontFamily: 'monospace', lineHeight: 1.8 }}>{line.text}</div>
-          ))}
-        </div>
-        <div style={{ color: '#475569', fontSize: 11, textAlign: 'center', marginTop: 8 }}>ESC 또는 바깥 클릭으로 닫기</div>
-      </div>
-    </div>
-  )
+  // 원형 빈 테이블
+  Draw.drawRoundTable(ctx, 100, 135, 30)
+  ctx.fillStyle = 'rgba(34,197,94,0.1)'
+  ctx.beginPath(); ctx.arc(100, 135, 30, 0, Math.PI * 2); ctx.fill()
+  Draw.drawDetectionBox(ctx, 68, 103, 64, 64, '#22c55e', '가용', tick)
+
+  ctx.fillStyle = 'rgba(34,197,94,0.6)'
+  ctx.font = '9px monospace'
+  ctx.fillText('AI: 가용 테이블 3개 확인됨', 15, VH - 8)
+
+  Draw.drawScanlines(ctx, VW, VH)
+  Draw.drawTimestamp(ctx, VH, 4, tick)
 }
+
+function drawCam5(ctx, tick, noise) {
+  Draw.drawBackground(ctx, VW, VH)
+  Draw.drawGrid(ctx, VW, VH)
+  Draw.drawSweep(ctx, VW, VH, tick, 'rgba(200,150,0,0.04)')
+
+  noise.forEach(n => {
+    n.y = (n.y + n.speed) % VH
+    Draw.drawNoiseLine(ctx, VW, n.y, n.alpha)
+  })
+
+  // 2인 테이블A
+  Draw.drawRectTable(ctx, 15, 20, 65, 35)
+  Draw.drawPerson(ctx, 30, 17, tick, 0)
+  Draw.drawPerson(ctx, 65, 17, tick, 1)
+  Draw.drawBowl(ctx, 32, 37, 5)
+  Draw.drawBowl(ctx, 62, 37, 5)
+  Draw.drawGlass(ctx, 47, 30, 0.05)
+  Draw.drawDetectionBox(ctx, 43, 27, 14, 16, '#f59e0b', '물소진', tick)
+  Draw.drawChopsticks(ctx, 37, 48, 0, false)
+  Draw.drawSpoon(ctx, 22, 37)
+
+  // 2인 테이블B
+  Draw.drawRectTable(ctx, 15, 80, 65, 35)
+  Draw.drawPerson(ctx, 30, 77, tick, 2)
+  Draw.drawPerson(ctx, 65, 77, tick, 3)
+  Draw.drawBowl(ctx, 32, 97, 5)
+  Draw.drawBowl(ctx, 62, 97, 5)
+  Draw.drawGlass(ctx, 47, 90, 0.6)
+  Draw.drawBowl(ctx, 47, 108, 4, '#1e293b', '#0f172a')
+  Draw.drawDetectionBox(ctx, 43, 104, 14, 12, '#f59e0b', '반찬소진', tick)
+
+  // 4인 테이블 — 우측
+  Draw.drawRectTable(ctx, 185, 30, 120, 65)
+  Draw.drawPerson(ctx, 205, 27, tick, 4)
+  Draw.drawPerson(ctx, 260, 27, tick, 5)
+  Draw.drawPerson(ctx, 205, 100, tick, 6)
+  Draw.drawPerson(ctx, 260, 100, tick, 7)
+  Draw.drawGrillPlate(ctx, 200, 45, 90, 36, tick)
+  Draw.drawBowl(ctx, 186, 45, 5)
+  Draw.drawBowl(ctx, 186, 65, 5)
+  Draw.drawBowl(ctx, 296, 45, 5)
+  Draw.drawBowl(ctx, 296, 65, 5)
+  Draw.drawGlass(ctx, 300, 83, 0.08)
+  Draw.drawDetectionBox(ctx, 296, 80, 14, 16, '#f59e0b', '물소진', tick)
+  Draw.drawBottle(ctx, 297, 45, false)
+  Draw.drawBottle(ctx, 304, 45, true)
+  Draw.drawChopsticks(ctx, 210, 88, 0, false)
+  Draw.drawChopsticks(ctx, 265, 88, 0, false)
+  Draw.drawSpoon(ctx, 180, 63)
+
+  ctx.fillStyle = 'rgba(245,158,11,0.6)'
+  ctx.font = '9px monospace'
+  ctx.fillText('주의: 물컵/반찬 보충 필요', 15, VH - 8)
+
+  Draw.drawScanlines(ctx, VW, VH)
+  Draw.drawTimestamp(ctx, VH, 5, tick)
+}
+
+function drawCam6(ctx, tick, noise) {
+  Draw.drawBackground(ctx, VW, VH)
+  Draw.drawGrid(ctx, VW, VH)
+  Draw.drawSweep(ctx, VW, VH, tick, 'rgba(0,120,200,0.04)')
+
+  noise.forEach(n => {
+    n.y = (n.y + n.speed) % VH
+    Draw.drawNoiseLine(ctx, VW, n.y, n.alpha)
+  })
+
+  // 문 프레임
+  ctx.strokeStyle = '#334155'; ctx.lineWidth = 3
+  ctx.strokeRect(110, 40, 100, VH - 40)
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2
+  ctx.strokeRect(113, 43, 94, VH - 46)
+  ctx.fillStyle = 'rgba(51,65,85,0.5)'
+  ctx.fillRect(110, 30, 100, 12)
+  ctx.fillStyle = 'rgba(148,163,184,0.6)'
+  ctx.font = '8px monospace'
+  ctx.fillText('ENTRANCE', 125, 39)
+  ctx.fillStyle = '#94a3b8'
+  ctx.beginPath(); ctx.arc(195, 115, 3, 0, Math.PI * 2); ctx.fill()
+
+  // 대기 손님 1
+  Draw.drawPerson(ctx, 65, 110, tick, 0)
+  Draw.drawDetectionBox(ctx, 54, 95, 24, 32, '#3b82f6', '대기:1', tick)
+
+  // 대기 손님 2
+  Draw.drawPerson(ctx, 245, 115, tick, 1)
+  Draw.drawDetectionBox(ctx, 234, 100, 24, 32, '#3b82f6', '대기:2', tick)
+
+  // 우산 분실물
+  Draw.drawFloorItem(ctx, 90, 158, 'umbrella', tick)
+  Draw.drawDetectionBox(ctx, 77, 146, 28, 24, '#ef4444', '분실물:우산', tick)
+
+  ctx.fillStyle = 'rgba(96,165,250,0.6)'
+  ctx.font = '9px monospace'
+  ctx.fillText('대기: 2명 | 예상 8분', 15, VH - 8)
+
+  Draw.drawScanlines(ctx, VW, VH)
+  Draw.drawTimestamp(ctx, VH, 6, tick)
+}
+
+const SCENE_FUNCS = [drawCam1, drawCam2, drawCam3, drawCam4, drawCam5, drawCam6]
+
+function drawScene(ctx, camIdx, tick, noise, actualW, actualH) {
+  ctx.save()
+  ctx.scale(actualW / VW, actualH / VH)
+  SCENE_FUNCS[camIdx](ctx, tick, noise)
+  ctx.restore()
+}
+
+// ── 컴포넌트 ────────────────────────────────────────────
 
 export default function CctvMonitor() {
-  const [selectedCam, setSelectedCam] = useState(null)
-  const [detectCount, setDetectCount] = useState(12)
-  const [, forceUpdate] = useState(0)
   const { isMobile } = useWindowSize()
+  const canvasRefs = useRef([])
+  const tickRef = useRef(0)
+  const noiseRef = useRef(
+    Array.from({ length: 6 }, () =>
+      Array.from({ length: 8 }, () => ({
+        y: Math.random() * VH,
+        alpha: 0.02 + Math.random() * 0.06,
+        speed: 0.3 + Math.random() * 0.9,
+      }))
+    )
+  )
+  const [selectedCam, setSelectedCam] = useState(null)
+  const modalCanvasRef = useRef(null)
+  const modalTickRef = useRef(0)
+  const modalNoiseRef = useRef(
+    Array.from({ length: 8 }, () => ({
+      y: Math.random() * VH,
+      alpha: 0.02 + Math.random() * 0.06,
+      speed: 0.3 + Math.random() * 0.9,
+    }))
+  )
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setDetectCount(c => c + 1)
-      forceUpdate(n => n + 1)
-    }, 7000)
-    return () => clearInterval(timer)
+    let animId
+    const loop = () => {
+      tickRef.current++
+      canvasRefs.current.forEach((canvas, i) => {
+        if (!canvas) return
+        const ctx = canvas.getContext('2d')
+        drawScene(ctx, i, tickRef.current, noiseRef.current[i], canvas.width, canvas.height)
+      })
+      animId = requestAnimationFrame(loop)
+    }
+    animId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(animId)
   }, [])
 
-  const canvasW = isMobile ? Math.min(window.innerWidth - 32, 400) : 320
-  const canvasSize = { w: canvasW, h: Math.round(canvasW * (9 / 16)) }
+  useEffect(() => {
+    if (selectedCam === null) return
+    let animId
+    const loop = () => {
+      modalTickRef.current++
+      const canvas = modalCanvasRef.current
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        drawScene(ctx, selectedCam, modalTickRef.current, modalNoiseRef.current, canvas.width, canvas.height)
+      }
+      animId = requestAnimationFrame(loop)
+    }
+    animId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(animId)
+  }, [selectedCam])
+
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') setSelectedCam(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  const handleCamClick = useCallback((idx) => {
+    modalNoiseRef.current = Array.from({ length: 8 }, () => ({
+      y: Math.random() * VH,
+      alpha: 0.02 + Math.random() * 0.06,
+      speed: 0.3 + Math.random() * 0.9,
+    }))
+    modalTickRef.current = tickRef.current
+    setSelectedCam(idx)
+  }, [])
+
+  const camW = isMobile ? Math.floor((window.innerWidth - 32) / 2) : 280
+  const camH = Math.round(camW * 9 / 16)
+
+  const cam = selectedCam !== null ? CAM_DATA[selectedCam] : null
 
   return (
-    <>
-      {/* 상단 topbar */}
-      <div style={{
-        background: '#0a0f0a', borderBottom: '1px solid #1a3a1e',
-        padding: isMobile ? '8px 12px' : '10px 20px',
-        display: 'flex', alignItems: 'center',
-        gap: isMobile ? 8 : 16, flexShrink: 0, flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px #ef4444' }} />
-          <span style={{ color: '#4ade80', fontFamily: 'monospace', fontWeight: 700, fontSize: isMobile ? 12 : 14 }}>CCTV 실시간 모니터</span>
+    <div style={{ padding: isMobile ? '12px' : '24px', background: '#0a0f1a', minHeight: '100vh' }}>
+      {/* 헤더 */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 700, color: '#e2e8f0' }}>
+            CCTV 실시간 모니터
+          </div>
+          <div style={{ fontSize: 12, color: '#4ade80', marginTop: 2 }}>
+            AI 객체 인식 시뮬레이션 — 6채널 실시간 분석 중
+          </div>
         </div>
-        <span style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace' }}>{CAM_DATA.length}채널 연결됨</span>
-        {!isMobile && (
-          <span style={{
-            background: 'rgba(0,255,80,0.1)', border: '1px solid rgba(0,255,80,0.3)',
-            color: '#4ade80', fontSize: 11, fontFamily: 'monospace', padding: '2px 10px', borderRadius: 4,
-          }}>● AI 분석 중</span>
-        )}
-        <span style={{ marginLeft: 'auto', color: '#475569', fontSize: 11, fontFamily: 'monospace' }}>
-          {new Date().toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-        </span>
-      </div>
-
-      <div style={{ padding: isMobile ? 10 : 16, background: '#060c06', minHeight: 'calc(100vh - 60px)', overflowY: 'auto' }}>
-
-        {/* 카메라 그리드 — 모바일 1열, PC 3열 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: isMobile ? 8 : 10,
-          marginBottom: 12,
-        }}>
-          {CAM_DATA.map(cam => (
-            <CameraCanvas
-              key={cam.id}
-              cam={cam}
-              size={canvasSize}
-              onClick={() => setSelectedCam(cam)}
-            />
-          ))}
-        </div>
-
-        {/* 하단 통계 카드 — 모바일 2열 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isMobile ? 6 : 10,
-        }}>
-          {[
-            { label: 'AI 감지 이벤트', value: detectCount, color: '#4ade80', unit: '건' },
-            { label: '긴급 알림', value: 2, color: '#ef4444', unit: '건' },
-            { label: '감지 정확도', value: '91.4', color: '#60a5fa', unit: '%' },
-            { label: '점유 테이블', value: '7/15', color: '#fbbf24', unit: '' },
-          ].map(stat => (
-            <div key={stat.label} style={{
-              background: 'rgba(0,20,10,0.8)', border: '1px solid rgba(0,255,80,0.1)',
-              borderRadius: 8, padding: isMobile ? '10px' : '14px 16px', textAlign: 'center',
-            }}>
-              <div style={{ color: stat.color, fontSize: isMobile ? 20 : 24, fontWeight: 700, fontFamily: 'monospace' }}>
-                {stat.value}{stat.unit}
-              </div>
-              <div style={{ color: '#475569', fontSize: isMobile ? 10 : 11, marginTop: 4, fontFamily: 'monospace' }}>{stat.label}</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {Object.entries(STATUS_LABEL).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[k] }} />
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>{v}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* 확대 모달 */}
-      {selectedCam && <CameraModal cam={selectedCam} onClose={() => setSelectedCam(null)} />}
-    </>
+      {/* 채널 그리드 */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+        gap: isMobile ? 8 : 16,
+        marginBottom: 16,
+      }}>
+        {CAM_DATA.map((camItem, idx) => (
+          <div
+            key={camItem.id}
+            onClick={() => handleCamClick(idx)}
+            style={{
+              background: '#0d1520',
+              border: `1px solid ${STATUS_COLOR[camItem.status]}33`,
+              borderRadius: 8,
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, transform 0.1s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = STATUS_COLOR[camItem.status] + '88'
+              e.currentTarget.style.transform = 'scale(1.01)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = STATUS_COLOR[camItem.status] + '33'
+              e.currentTarget.style.transform = 'scale(1)'
+            }}
+          >
+            <div style={{
+              padding: '6px 10px',
+              background: '#111827',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: STATUS_COLOR[camItem.status],
+                  boxShadow: `0 0 6px ${STATUS_COLOR[camItem.status]}`,
+                }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#e2e8f0', fontFamily: 'monospace' }}>
+                  CH{camItem.ch} {camItem.label}
+                </span>
+              </div>
+              <span style={{
+                fontSize: 10,
+                color: STATUS_COLOR[camItem.status],
+                background: STATUS_COLOR[camItem.status] + '22',
+                padding: '1px 6px',
+                borderRadius: 4,
+                fontWeight: 600,
+              }}>
+                {STATUS_LABEL[camItem.status]}
+              </span>
+            </div>
+
+            <canvas
+              ref={el => canvasRefs.current[idx] = el}
+              width={camW}
+              height={camH}
+              style={{ display: 'block', width: '100%' }}
+            />
+
+            {camItem.alerts.length > 0 && (
+              <div style={{ padding: '6px 10px', borderTop: '1px solid #1e293b' }}>
+                {camItem.alerts.slice(0, isMobile ? 1 : 2).map((a, i) => (
+                  <div key={i} style={{ fontSize: 10, color: STATUS_COLOR[camItem.status], marginBottom: i < camItem.alerts.length - 1 ? 2 : 0 }}>
+                    ▸ {a}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 감지 항목 범례 */}
+      <div style={{
+        background: '#0d1520',
+        border: '1px solid #1e293b',
+        borderRadius: 8,
+        padding: '12px 16px',
+        marginBottom: isMobile ? 80 : 0,
+      }}>
+        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 10, fontFamily: 'monospace' }}>
+          AI 감지 항목 범례
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 16 }}>
+          {[
+            { color: '#ef4444', label: '긴급 — 분실물 / 빈 병 / 젓가락 낙하' },
+            { color: '#f59e0b', label: '주의 — 재킷 감지 / 물·반찬 소진' },
+            { color: '#3b82f6', label: 'AI분석 — 계산 감지 / 가방·폰 방치' },
+            { color: '#22c55e', label: '정상 — 가용 테이블 / 정리 완료' },
+          ].map(({ color, label }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, background: color + '33', border: `1.5px solid ${color}`, borderRadius: 2 }} />
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 클릭 확대 모달 */}
+      {selectedCam !== null && cam && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+            zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setSelectedCam(null)}
+        >
+          <div
+            style={{
+              background: '#0d1520',
+              border: `1px solid ${STATUS_COLOR[cam.status]}44`,
+              borderRadius: 12, overflow: 'hidden', maxWidth: 560, width: '100%',
+              boxShadow: `0 0 40px ${STATUS_COLOR[cam.status]}22`,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{
+              padding: '12px 16px', background: '#111827',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: STATUS_COLOR[cam.status],
+                  boxShadow: `0 0 8px ${STATUS_COLOR[cam.status]}`,
+                }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', fontFamily: 'monospace' }}>
+                  CH{cam.ch} — {cam.label} ({cam.location})
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedCam(null)}
+                style={{
+                  background: 'none', border: 'none', color: '#64748b',
+                  fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px',
+                }}
+              >✕</button>
+            </div>
+
+            <canvas
+              ref={modalCanvasRef}
+              width={480}
+              height={270}
+              style={{ display: 'block', width: '100%' }}
+            />
+
+            <div style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 600, marginBottom: 8, fontFamily: 'monospace' }}>
+                AI 분석 결과
+              </div>
+              {cam.analysis.map((a, i) => (
+                <div key={i} style={{
+                  fontSize: 12, color: '#cbd5e1', marginBottom: 5,
+                  padding: '6px 10px', background: '#111827', borderRadius: 6,
+                  borderLeft: `2px solid ${STATUS_COLOR[cam.status]}`,
+                }}>
+                  {a}
+                </div>
+              ))}
+              <div style={{ marginTop: 10, fontSize: 10, color: '#475569', textAlign: 'right', fontFamily: 'monospace' }}>
+                ESC 또는 바깥 클릭으로 닫기
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

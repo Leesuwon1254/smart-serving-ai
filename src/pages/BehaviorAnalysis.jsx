@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Header from '../components/Header'
 import { useWindowSize } from '../hooks/useWindowSize'
+import * as Draw from '../utils/canvasDraw'
 
 // ── Mock 데이터 ──────────────────────────────────────────────
 const TABLE_BEHAVIOR = {
@@ -96,66 +97,52 @@ const LEVEL_COLOR = { 긴급: '#ef4444', 주의: '#f59e0b', 정보: '#3b82f6' }
 const LEVEL_BG    = { 긴급: '#fee2e2', 주의: '#fef3c7', 정보: '#dbeafe' }
 
 // ── 미니 CCTV Canvas ─────────────────────────────────────────
-function drawMiniCam(canvas, camData, frame) {
+// 가상 좌표계: 200×120 (캠 데이터의 people/bbox 좌표 기준)
+const MINI_VW = 200
+const MINI_VH = 120
+
+function drawMiniCam(canvas, camData, tick) {
   if (!canvas) return
   const ctx = canvas.getContext('2d')
   const W = canvas.width, H = canvas.height
-  const t = frame * 0.016
   const cam = camData
 
-  ctx.fillStyle = `rgb(${6+cam.tint[0]},${10+cam.tint[1]},${8+cam.tint[2]})`
-  ctx.fillRect(0, 0, W, H)
+  ctx.save()
+  ctx.scale(W / MINI_VW, H / MINI_VH)
 
-  ctx.strokeStyle = 'rgba(0,255,80,0.04)'
-  ctx.lineWidth = 0.5
-  for (let x = 0; x <= W; x += 16) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke() }
-  for (let y = 0; y <= H; y += 16) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke() }
+  // 배경
+  Draw.drawBackground(ctx, MINI_VW, MINI_VH, `rgb(${6+cam.tint[0]},${10+cam.tint[1]},${8+cam.tint[2]})`)
+  Draw.drawGrid(ctx, MINI_VW, MINI_VH)
+  Draw.drawSweep(ctx, MINI_VW, MINI_VH, tick + cam.id * 30)
 
-  const bob = Math.sin(t * 0.8) * 1.2
+  // 사람 실루엣
   cam.people.forEach((p, i) => {
-    const px = p.x*(W/200), py = (p.y+bob*(i%2?-0.5:1))*(H/120)
-    ctx.fillStyle = 'rgba(180,220,200,0.6)'
-    ctx.fillRect(px-6, py-7, 12, 17)
-    ctx.beginPath(); ctx.arc(px, py-10, 5, 0, Math.PI*2); ctx.fill()
+    Draw.drawPerson(ctx, p.x, p.y, tick, i)
   })
 
+  // AI 감지 박스
   cam.bboxes.forEach(box => {
-    const pulse = 0.55 + 0.45*Math.sin(t*2.5)
-    ctx.globalAlpha = pulse
-    ctx.strokeStyle = box.color
-    ctx.lineWidth = 1.5
-    const bx=box.x*(W/200), by=box.y*(H/120), bw=box.w*(W/200), bh=box.h*(H/120)
-    ctx.strokeRect(bx, by, bw, bh)
-    ctx.globalAlpha = 1
+    Draw.drawDetectionBox(ctx, box.x, box.y, box.w, box.h, box.color, box.label, tick)
   })
 
-  const sweepY = ((t*25+cam.id*20) % (H+16)) - 8
-  const g = ctx.createLinearGradient(0, sweepY-10, 0, sweepY+10)
-  g.addColorStop(0,'rgba(0,255,80,0)'); g.addColorStop(0.5,'rgba(0,255,80,0.15)'); g.addColorStop(1,'rgba(0,255,80,0)')
-  ctx.fillStyle = g; ctx.fillRect(0, sweepY-10, W, 20)
+  Draw.drawScanlines(ctx, MINI_VW, MINI_VH)
+  Draw.drawTimestamp(ctx, MINI_VH, cam.id, tick)
 
-  for (let y = 0; y < H; y += 3) { ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(0,y,W,1) }
-
-  const now = new Date()
-  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
-  ctx.font = `bold 8px monospace`
-  ctx.fillStyle = 'rgba(0,255,80,0.55)'
-  ctx.fillText(`CH${cam.id}  ${ts}`, 4, H-4)
+  ctx.restore()
 }
 
 function MiniCamCanvas({ camData }) {
   const ref = useRef(null)
-  const frameRef = useRef(0)
+  const tickRef = useRef(0)
   useEffect(() => {
-    let running = true
+    let animId
     function loop() {
-      if (!running) return
-      frameRef.current++
-      drawMiniCam(ref.current, camData, frameRef.current)
-      requestAnimationFrame(loop)
+      tickRef.current++
+      drawMiniCam(ref.current, camData, tickRef.current)
+      animId = requestAnimationFrame(loop)
     }
-    requestAnimationFrame(loop)
-    return () => { running = false }
+    animId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(animId)
   }, [camData])
   return (
     <canvas ref={ref} width={280} height={160}
