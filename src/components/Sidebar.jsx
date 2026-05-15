@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { alertsData } from '../data/mockData'
+import { VERSION } from '../version'
 
 const unreadCount = alertsData.filter(a => a.unread).length
 
@@ -36,7 +37,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        <div>AI 엔진 v2.1.0</div>
+        <div>AI 엔진 <span style={{ fontSize: '11px', opacity: 0.5 }}>v{VERSION}</span></div>
         <div style={{ marginTop: 4, color: '#6ee7b7' }}>모델 정확도: 94.2%</div>
       </div>
     </aside>

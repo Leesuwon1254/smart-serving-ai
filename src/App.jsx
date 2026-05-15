@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import VersionUpdateModal from './components/ui/VersionUpdateModal'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Tables from './pages/Tables'
@@ -8,7 +9,9 @@ import Settings from './pages/Settings'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <>
+      <VersionUpdateModal />
+      <BrowserRouter>
       <div className="app-layout">
         <Sidebar />
         <div className="main-content">
@@ -22,5 +25,6 @@ export default function App() {
         </div>
       </div>
     </BrowserRouter>
+    </>
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { VERSION } from '../version'
 
 export default function Header({ title, subtitle }) {
   const [time, setTime] = useState(new Date())
@@ -21,6 +22,17 @@ export default function Header({ title, subtitle }) {
       </div>
       <div className="header-right">
         <span className="header-time">{formatted}</span>
+        <span style={{
+          fontSize: '11px',
+          color: '#94a3b8',
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '4px',
+          padding: '2px 6px',
+          fontFamily: 'monospace',
+        }}>
+          v{VERSION}
+        </span>
         <span className="status-badge online">
           <span className="dot" />
           AI 실시간 분석 중
