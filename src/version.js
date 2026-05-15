@@ -1,7 +1,18 @@
 // src/version.js
-export const VERSION = '1.1.1';
+export const VERSION = '1.1.2';
 
 export const CHANGELOG = [
+  {
+    version: '1.1.2',
+    date: '2026-05-15',
+    type: 'patch',
+    title: '행동 분석 보이스 알림 필터링 버그 수정',
+    changes: [
+      '🔧 선택된 테이블의 보이스 알림 이력만 표시되도록 수정',
+      '🔧 테이블 전환 시 이력 목록 즉시 갱신',
+      '🔧 해당 테이블 이력 없을 때 안내 메시지 표시',
+    ],
+  },
   {
     version: '1.1.1',
     date: '2026-05-15',

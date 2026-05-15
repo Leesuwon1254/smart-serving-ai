@@ -16,8 +16,8 @@ const TABLE_BEHAVIOR = {
     signals: { refill: 91, water: 55, drink: 78, payment: 30, leave: 20, call: 8 },
     aiRecommend: '빈 병 및 젓가락 낙하 감지. 즉시 테이블 방문하여 새 수저 제공 및 추가 주문 유도 권장. 추가 주문 확률 91%.',
     voiceHistory: [
-      { level: '긴급', text: '"3번 테이블, 수저가 떨어졌습니다. 새 수저를 즉시 가져다 주세요."', time: '방금 전', cam: 'CAM 1' },
-      { level: '주의', text: '"1번 테이블, 음료가 소진됐습니다. 추가 주문 안내 권장합니다."', time: '5분 전', cam: 'CAM 1' },
+      { tableId: 1, level: '긴급', text: '"1번 테이블, 젓가락이 바닥에 떨어졌습니다. 새 젓가락을 즉시 가져다 주세요."', time: '방금 전', cam: 'CAM 1' },
+      { tableId: 1, level: '주의', text: '"1번 테이블, 음료가 소진됐습니다. 추가 주문 안내 권장합니다."', time: '5분 전', cam: 'CAM 1' },
     ],
   },
   5: {
@@ -32,9 +32,8 @@ const TABLE_BEHAVIOR = {
     signals: { refill: 85, water: 65, drink: 42, payment: 18, leave: 12, call: 5 },
     aiRecommend: '깍두기 리필을 먼저 준비 후 테이블 방문. 물 상태도 함께 확인. 음료 추가 주문 자연스럽게 제안 가능.',
     voiceHistory: [
-      { level: '긴급', text: '"3번 테이블, 수저가 떨어졌습니다. 새 수저를 즉시 가져다 주세요."', time: '방금 전', cam: 'CAM 1' },
-      { level: '주의', text: '"5번 테이블, 깍두기가 거의 소진됐습니다. 리필 준비 후 방문 바랍니다."', time: '1분 전', cam: 'CAM 2' },
-      { level: '정보', text: '"7번 테이블, 체류 58분 경과. 카드를 꺼내는 동작이 감지됐습니다."', time: '3분 전', cam: 'CAM 3' },
+      { tableId: 5, level: '주의', text: '"5번 테이블, 깍두기가 거의 소진됐습니다. 리필 준비 후 방문 바랍니다."', time: '1분 전', cam: 'CAM 2' },
+      { tableId: 5, level: '정보', text: '"5번 테이블, 물컵 잔량이 줄어들고 있습니다. 방문 시 물도 함께 확인해 주세요."', time: '5분 전', cam: 'CAM 2' },
     ],
   },
   7: {
@@ -49,8 +48,23 @@ const TABLE_BEHAVIOR = {
     signals: { refill: 20, water: 40, drink: 15, payment: 78, leave: 65, call: 3 },
     aiRecommend: '카드 꺼냄 동작 감지. 계산 가능성 78%. POS 시스템 준비 및 영수증 출력 대기 권장. 퇴석 후 즉시 테이블 정리.',
     voiceHistory: [
-      { level: '정보', text: '"7번 테이블, 체류 58분 경과. 카드를 꺼내는 동작이 감지됐습니다."', time: '방금 전', cam: 'CAM 3' },
-      { level: '정보', text: '"7번 테이블, 식사 마무리 단계로 판단됩니다. POS 준비 권장."', time: '8분 전', cam: 'CAM 3' },
+      { tableId: 7, level: '정보', text: '"7번 테이블, 체류 58분 경과. 카드를 꺼내는 동작이 감지됐습니다. 계산 준비해 주세요."', time: '방금 전', cam: 'CAM 3' },
+      { tableId: 7, level: '정보', text: '"7번 테이블, 식사 마무리 단계로 판단됩니다. POS 준비 권장."', time: '8분 전', cam: 'CAM 3' },
+    ],
+  },
+  12: {
+    status: 'warning', guests: 2, startTime: '14:00', duration: 32,
+    cam: { id: 1, label: 'CAM 1 · 테이블 1~3구역', tint: [0,15,0], people: [{x:60,y:50},{x:80,y:50}], bboxes: [{x:44,y:38,w:70,h:50,color:'#f59e0b',label:'빈 병'}] },
+    timeline: [
+      { time: '14:00', label: '착석 · 주문', level: 1.0, color: '#22c55e' },
+      { time: '14:12', label: '음식 섭취 시작', level: 0.85, color: '#3b82f6' },
+      { time: '14:25', label: '소주병 소진 감지', level: 0.35, color: '#f59e0b' },
+      { time: '14:32', label: '추가 주문 가능성 감지', level: 0.2, color: '#ef4444' },
+    ],
+    signals: { refill: 70, water: 45, drink: 87, payment: 15, leave: 10, call: 12 },
+    aiRecommend: '소주병 소진 감지. 추가 주문 가능성 87%. 자연스러운 방문으로 추가 주문 유도 권장.',
+    voiceHistory: [
+      { tableId: 12, level: '주의', text: '"12번 테이블, 소주병이 비어 있습니다. 추가 주문 가능성 87%, 방문해 확인해 주세요."', time: '2분 전', cam: 'CAM 1' },
     ],
   },
   13: {
@@ -64,7 +78,7 @@ const TABLE_BEHAVIOR = {
     signals: { refill: 25, water: 50, drink: 35, payment: 8, leave: 5, call: 2 },
     aiRecommend: '현재 이상 없음. 착석 22분, 정상 섭취 패턴 감지. 물 상태 확인 방문 권장 (잔량 50%).',
     voiceHistory: [
-      { level: '정보', text: '"13번 테이블, 4인 착석 22분 경과. 정상 패턴으로 특이사항 없습니다."', time: '2분 전', cam: 'CAM 5' },
+      { tableId: 13, level: '정보', text: '"13번 테이블, 4인 착석 패턴 분석 중입니다. 특이사항 없음."', time: '10분 전', cam: 'CAM 5' },
     ],
   },
 }
@@ -170,6 +184,11 @@ export default function BehaviorAnalysis() {
   const alertTables = [1, 5, 7]
   const emptyTables = [2, 4, 6, 8, 9, 10, 11, 14, 15]
 
+  const handleTableSelect = (num) => {
+    setSelectedTable(num)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <>
       <Header title="행동 분석" subtitle="테이블별 AI 행동 패턴 실시간 분석" />
@@ -196,7 +215,7 @@ export default function BehaviorAnalysis() {
               return (
                 <button
                   key={num}
-                  onClick={() => hasBehavior && setSelectedTable(num)}
+                  onClick={() => handleTableSelect(num)}
                   style={{
                     width: 46, height: 46, borderRadius: 8, fontWeight: 700, fontSize: 13,
                     cursor: hasBehavior ? 'pointer' : 'default',
@@ -224,8 +243,12 @@ export default function BehaviorAnalysis() {
         </div>
 
         {!data ? (
-          <div className="card" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
-            해당 테이블의 분석 데이터가 없습니다.
+          <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: '#94a3b8' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>
+              {selectedTable}번 테이블 분석 데이터 없음
+            </div>
+            <div style={{ fontSize: 13 }}>현재 빈 테이블이거나 분석 중입니다.</div>
           </div>
         ) : (
           <>
@@ -303,10 +326,18 @@ export default function BehaviorAnalysis() {
             <div className="card" style={{ padding: 0 }}>
               <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', fontWeight: 600, fontSize: 14 }}>
                 보이스 알림 전송 이력
+                <span style={{ marginLeft: 8, fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>
+                  {selectedTable}번 테이블
+                </span>
               </div>
-              {data.voiceHistory.map((vh, i) => (
-                <div key={i} style={{
-                  padding: '14px 20px', borderBottom: i < data.voiceHistory.length - 1 ? '1px solid #f1f5f9' : 'none',
+              {(data.voiceHistory ?? []).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: 13 }}>
+                  {selectedTable}번 테이블의 보이스 알림 이력이 없습니다.
+                </div>
+              ) : (data.voiceHistory ?? []).map((vh, i) => (
+                <div key={`${selectedTable}-${i}`} style={{
+                  padding: '14px 20px',
+                  borderBottom: i < data.voiceHistory.length - 1 ? '1px solid #f1f5f9' : 'none',
                   display: 'flex', flexDirection: 'column', gap: 6,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
