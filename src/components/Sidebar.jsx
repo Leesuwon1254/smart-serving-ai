@@ -7,6 +7,8 @@ const unreadCount = alertsData.filter(a => a.unread).length
 const navItems = [
   { to: '/',          icon: '🏠', label: '대시보드' },
   { to: '/tables',    icon: '🍽️', label: '테이블 현황' },
+  { to: '/cctv',      icon: '📹', label: 'CCTV 모니터' },
+  { to: '/behavior',  icon: '🔍', label: '행동 분석' },
   { to: '/alerts',    icon: '🔔', label: '실시간 알림', badge: unreadCount },
   { to: '/analytics', icon: '📊', label: '분석 리포트' },
   { to: '/settings',  icon: '⚙️', label: '설정' },

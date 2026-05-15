@@ -6,6 +6,8 @@ import Tables from './pages/Tables'
 import Alerts from './pages/Alerts'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import CctvMonitor from './pages/CctvMonitor'
+import BehaviorAnalysis from './pages/BehaviorAnalysis'
 
 export default function App() {
   return (
@@ -21,6 +23,8 @@ export default function App() {
             <Route path="/alerts"    element={<Alerts />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings"  element={<Settings />} />
+            <Route path="/cctv"      element={<CctvMonitor />} />
+            <Route path="/behavior"  element={<BehaviorAnalysis />} />
           </Routes>
         </div>
       </div>
