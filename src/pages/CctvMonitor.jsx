@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Header from '../components/Header'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 const CAM_DATA = [
   {
@@ -368,6 +369,7 @@ export default function CctvMonitor() {
   const [selectedCam, setSelectedCam] = useState(null)
   const [detectCount, setDetectCount] = useState(12)
   const [, forceUpdate] = useState(0)
+  const { isMobile } = useWindowSize()
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -377,40 +379,43 @@ export default function CctvMonitor() {
     return () => clearInterval(timer)
   }, [])
 
-  const canvasSize = { w: 320, h: 180 }
+  const canvasW = isMobile ? Math.min(window.innerWidth - 32, 400) : 320
+  const canvasSize = { w: canvasW, h: Math.round(canvasW * (9 / 16)) }
 
   return (
     <>
-      <style>{`
-        .cctv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        @media (max-width: 900px) { .cctv-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 560px) { .cctv-grid { grid-template-columns: 1fr; } }
-      `}</style>
-
       {/* 상단 topbar */}
       <div style={{
         background: '#0a0f0a', borderBottom: '1px solid #1a3a1e',
-        padding: '10px 20px', display: 'flex', alignItems: 'center',
-        gap: 16, flexShrink: 0, flexWrap: 'wrap',
+        padding: isMobile ? '8px 12px' : '10px 20px',
+        display: 'flex', alignItems: 'center',
+        gap: isMobile ? 8 : 16, flexShrink: 0, flexWrap: 'wrap',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px #ef4444', animation: 'pulse 1s infinite' }} />
-          <span style={{ color: '#4ade80', fontFamily: 'monospace', fontWeight: 700, fontSize: 14 }}>CCTV 실시간 모니터</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px #ef4444' }} />
+          <span style={{ color: '#4ade80', fontFamily: 'monospace', fontWeight: 700, fontSize: isMobile ? 12 : 14 }}>CCTV 실시간 모니터</span>
         </div>
-        <span style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>카메라 {CAM_DATA.length}채널 연결됨</span>
-        <span style={{
-          background: 'rgba(0,255,80,0.1)', border: '1px solid rgba(0,255,80,0.3)',
-          color: '#4ade80', fontSize: 11, fontFamily: 'monospace', padding: '2px 10px', borderRadius: 4,
-        }}>● AI 분석 중</span>
+        <span style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace' }}>{CAM_DATA.length}채널 연결됨</span>
+        {!isMobile && (
+          <span style={{
+            background: 'rgba(0,255,80,0.1)', border: '1px solid rgba(0,255,80,0.3)',
+            color: '#4ade80', fontSize: 11, fontFamily: 'monospace', padding: '2px 10px', borderRadius: 4,
+          }}>● AI 분석 중</span>
+        )}
         <span style={{ marginLeft: 'auto', color: '#475569', fontSize: 11, fontFamily: 'monospace' }}>
           {new Date().toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </span>
       </div>
 
-      <div style={{ padding: 16, background: '#060c06', minHeight: 'calc(100vh - 60px)', overflowY: 'auto' }}>
+      <div style={{ padding: isMobile ? 10 : 16, background: '#060c06', minHeight: 'calc(100vh - 60px)', overflowY: 'auto' }}>
 
-        {/* 카메라 그리드 */}
-        <div className="cctv-grid" style={{ marginBottom: 16 }}>
+        {/* 카메라 그리드 — 모바일 1열, PC 3열 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: isMobile ? 8 : 10,
+          marginBottom: 12,
+        }}>
           {CAM_DATA.map(cam => (
             <CameraCanvas
               key={cam.id}
@@ -421,22 +426,26 @@ export default function CctvMonitor() {
           ))}
         </div>
 
-        {/* 하단 통계 카드 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+        {/* 하단 통계 카드 — 모바일 2열 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gap: isMobile ? 6 : 10,
+        }}>
           {[
             { label: 'AI 감지 이벤트', value: detectCount, color: '#4ade80', unit: '건' },
             { label: '긴급 알림', value: 2, color: '#ef4444', unit: '건' },
-            { label: '평균 감지 정확도', value: '91.4', color: '#60a5fa', unit: '%' },
-            { label: '점유 테이블', value: '7 / 15', color: '#fbbf24', unit: '' },
+            { label: '감지 정확도', value: '91.4', color: '#60a5fa', unit: '%' },
+            { label: '점유 테이블', value: '7/15', color: '#fbbf24', unit: '' },
           ].map(stat => (
             <div key={stat.label} style={{
               background: 'rgba(0,20,10,0.8)', border: '1px solid rgba(0,255,80,0.1)',
-              borderRadius: 8, padding: '14px 16px', textAlign: 'center',
+              borderRadius: 8, padding: isMobile ? '10px' : '14px 16px', textAlign: 'center',
             }}>
-              <div style={{ color: stat.color, fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
+              <div style={{ color: stat.color, fontSize: isMobile ? 20 : 24, fontWeight: 700, fontFamily: 'monospace' }}>
                 {stat.value}{stat.unit}
               </div>
-              <div style={{ color: '#475569', fontSize: 11, marginTop: 4, fontFamily: 'monospace' }}>{stat.label}</div>
+              <div style={{ color: '#475569', fontSize: isMobile ? 10 : 11, marginTop: 4, fontFamily: 'monospace' }}>{stat.label}</div>
             </div>
           ))}
         </div>

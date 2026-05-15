@@ -498,3 +498,76 @@ tbody tr:last-child td {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .tables-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* ── 모바일 공통 ── */
+@media (max-width: 768px) {
+  /* 사이드바 숨김 */
+  .sidebar {
+    display: none !important;
+  }
+
+  /* 메인 영역 */
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 헤더 모바일 */
+  .header {
+    padding: 8px 12px !important;
+    height: 52px !important;
+  }
+
+  .header-title {
+    font-size: 15px !important;
+  }
+
+  /* 페이지 콘텐츠 여백 */
+  .page-content {
+    padding: 12px !important;
+  }
+
+  /* 카드 그리드 1열 */
+  .grid-4,
+  .grid-3,
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* 테이블 플로어 맵 2열 */
+  .tables-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* 테이블 가로 스크롤 */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    font-size: 12px !important;
+    min-width: 500px;
+  }
+
+  /* 탭바 공간 확보 */
+  body {
+    padding-bottom: 60px;
+  }
+}
+
+/* 모바일 탭바 */
+.mobile-tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-tabbar {
+    display: flex !important;
+  }
+
+  /* 버전 팝업 탭바 위로 */
+  .vsm-overlay {
+    padding-bottom: 60px !important;
+  }
+}

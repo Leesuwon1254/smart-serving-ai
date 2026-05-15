@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Header from '../components/Header'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 // ── Mock 데이터 ──────────────────────────────────────────────
 const TABLE_BEHAVIOR = {
@@ -164,6 +165,7 @@ function Waveform({ color }) {
 export default function BehaviorAnalysis() {
   const [selectedTable, setSelectedTable] = useState(5)
   const data = TABLE_BEHAVIOR[selectedTable]
+  const { isMobile } = useWindowSize()
 
   const alertTables = [1, 5, 7]
   const emptyTables = [2, 4, 6, 8, 9, 10, 11, 14, 15]
@@ -176,7 +178,16 @@ export default function BehaviorAnalysis() {
         {/* 테이블 선택 탭 */}
         <div className="card" style={{ marginBottom: 20, padding: '16px 20px' }}>
           <div style={{ fontWeight: 600, fontSize: 14, color: '#64748b', marginBottom: 12 }}>테이블 선택</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{
+            display: 'flex',
+            flexWrap: isMobile ? 'nowrap' : 'wrap',
+            gap: isMobile ? 6 : 8,
+            overflowX: isMobile ? 'auto' : 'visible',
+            paddingBottom: isMobile ? 8 : 0,
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+          }}>
             {Array.from({ length: 15 }, (_, i) => i + 1).map(num => {
               const isAlert = alertTables.includes(num)
               const isEmpty = emptyTables.includes(num)
@@ -218,8 +229,8 @@ export default function BehaviorAnalysis() {
           </div>
         ) : (
           <>
-            {/* 2컬럼 패널 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            {/* 2컬럼 패널 — 모바일 1열 */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
 
               {/* 좌측: CCTV 미리보기 + 타임라인 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

@@ -186,10 +186,11 @@ export default function VersionUpdateModal() {
           margin-top: 10px;
         }
 
-        @media (max-width: 520px) {
+        @media (max-width: 768px) {
           .vsm-overlay {
             align-items: flex-end;
             padding: 0;
+            padding-bottom: 60px;
           }
           .vsm-modal {
             max-width: 100%;

@@ -8,6 +8,7 @@ import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import CctvMonitor from './pages/CctvMonitor'
 import BehaviorAnalysis from './pages/BehaviorAnalysis'
+import MobileTabBar from './components/layout/MobileTabBar'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           </Routes>
         </div>
       </div>
+        <MobileTabBar />
     </BrowserRouter>
     </>
   )

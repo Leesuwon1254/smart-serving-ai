@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { VERSION } from '../version'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 export default function Header({ title, subtitle }) {
   const [time, setTime] = useState(new Date())
+  const { isMobile } = useWindowSize()
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -18,10 +20,10 @@ export default function Header({ title, subtitle }) {
     <header className="header">
       <div>
         <div className="header-title">{title}</div>
-        {subtitle && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{subtitle}</div>}
+        {subtitle && !isMobile && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{subtitle}</div>}
       </div>
       <div className="header-right">
-        <span className="header-time">{formatted}</span>
+        {!isMobile && <span className="header-time">{formatted}</span>}
         <span style={{
           fontSize: '11px',
           color: '#94a3b8',
@@ -35,7 +37,7 @@ export default function Header({ title, subtitle }) {
         </span>
         <span className="status-badge online">
           <span className="dot" />
-          AI 실시간 분석 중
+          {isMobile ? 'AI 분석 중' : 'AI 실시간 분석 중'}
         </span>
       </div>
     </header>
