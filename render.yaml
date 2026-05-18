@@ -4,14 +4,7 @@ services:
     runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
-    pullRequestPreviewsEnabled: true
-    envVars:
-      - key: VITE_APP_NAME
-        value: Smart Serving AI
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache
+    pullRequestPreviewsEnabled: false
     routes:
       - type: rewrite
         source: /*
